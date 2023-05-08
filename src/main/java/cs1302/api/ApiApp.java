@@ -83,6 +83,7 @@ public class ApiApp extends Application {
      * Constructs an {@code ApiApp} object. This default (i.e., no argument)
      * constructor is executed in Step 2 of the JavaFX Application Life-Cycle.
      */
+
     public ApiApp() {
         root = new VBox();
         this.topBox = new HBox(2);
@@ -142,7 +143,14 @@ public class ApiApp extends Application {
 
     } // start
 
-
+/**
+ *Acesses 2 APIs to convert a city to latitude and longitdue coordinates to pass into
+ *an API that uses the cordinates to determine weather.
+ *If the text fields are not completed properly or duplicate cities are found,
+ *the weather of the best match to the inputs given will be shown.
+ *If the program errors out than current results will be left displayed.
+ *@throws IllegalArgumentException if no results are found from the search terms given
+ */
 
     public void toLocation() {
         String term = URLEncoder.encode(this.searchBar.getText(), StandardCharsets.UTF_8);
@@ -151,50 +159,56 @@ public class ApiApp extends Application {
         String url = "https://api.api-ninjas.com/v1/geocoding?city=" + term + "&country=" + code;
 
         try {
-        HttpRequest request = HttpRequest.newBuilder().uri(URI.create(url)).
-            header("X-Api-Key", NINJA_KEY).build();
-        HttpResponse<String> response = HTTP_CLIENT.send(request, BodyHandlers.ofString());
-        locator  =
-                 GSON.<NinjaResponse[]>fromJson(response.body(), NinjaResponse[].class);
-        if (locator.length == 0) {
-            throw new IllegalArgumentException("No results found, enter new terms in text fields");
-        }
-        Double latitude = locator[0].latitude;
-        Double longitude = locator[0].longitude;
-        String query = WEATHER_API + WEATHER_KEY + "&q=" + latitude + "," + longitude + "&aqi=no";
+            HttpRequest request = HttpRequest.newBuilder().uri(URI.create(url)).
+                header("X-Api-Key", NINJA_KEY).build();
+            HttpResponse<String> response = HTTP_CLIENT.send(request, BodyHandlers.ofString());
+            if (response.body().equals("{\"message\": \"Internal server error\"}")) {
+                throw new Error("Internal server error");
+            }
+            locator  =
+                GSON.<NinjaResponse[]>fromJson(response.body(), NinjaResponse[].class);
+            if (locator.length == 0) {
+                throw new IllegalArgumentException("No results found, enter new terms in"
+                + "text fields");
+            }
+            System.out.println("hi");
+            Double latitude = locator[0].latitude;
+            Double longitude = locator[0].longitude;
+            String query = WEATHER_API + WEATHER_KEY + "&q=" + latitude + ","
+                + longitude + "&aqi=no";
             HttpRequest secRequest = HttpRequest.newBuilder().uri(URI.create(query)).build();
             HttpResponse<String> sresponse = HTTP_CLIENT.send(secRequest, BodyHandlers.ofString());
             System.out.println(sresponse.body());
             WeatherResponse ports =
-                 GSON.<WeatherResponse>fromJson(sresponse.body(), WeatherResponse.class);
-            System.out.println("hi");
-            System.out.println(ports.current.temp_f);
+                GSON.<WeatherResponse>fromJson(sresponse.body(), WeatherResponse.class);
             String urlRe = "https:" + ports.current.condition.icon;
             this.weather = new Image(urlRe);
             this.weatherImg.setImage(weather);
             description.setText("The weather is:\n" + ports.current.condition.text + '\n' +
-            "The current temperature is:\n" + ports.current.temp_f + " degrees Fahrenheit" +
-                "\nThe humidity is:\n" + ports.current.humidity + "%");
+                "The current temperature is:\n" + ports.current.tempF + " degrees Fahrenheit" +
+                "\nThe humidity is:\n" + ports.current.humidity +  "%");
         } catch (Throwable t) {
             this.alert(t.toString());
-         }
- }
+        }
+    }
 
 
 
+    /**
+     *Creates an alert box and prints out the string given.
+     *@param str - string to print out
+     */
 
-
-
- public void alert(String str) {
-          TextArea text = new TextArea(str);
-          text.setWrapText(true);
-          text.setEditable(false);
-          Alert alert = new Alert(AlertType.ERROR);
-          alert.getDialogPane().setContent(text);
-          alert.setResizable(true);
-          alert.showAndWait();
-          searchButton.setDisable(false);
-     } // alert
+    public void alert(String str) {
+        TextArea text = new TextArea(str);
+        text.setWrapText(true);
+        text.setEditable(false);
+        Alert alert = new Alert(AlertType.ERROR);
+        alert.getDialogPane().setContent(text);
+        alert.setResizable(true);
+        alert.showAndWait();
+        searchButton.setDisable(false);
+    } // alert
 
 
 
